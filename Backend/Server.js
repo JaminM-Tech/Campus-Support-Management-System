@@ -15,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
-// Serve the frontend.
+// Serve frontend files from the root public folder.
 const frontendPath = path.join(__dirname, "../public");
 
 app.use(express.static(frontendPath));
@@ -24,7 +24,7 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(frontendPath, "index.html"));
 });
 
-// Existing collection names.
+// MongoDB collection names.
 const allowedCollections = [
     "students",
     "courses",
@@ -32,6 +32,7 @@ const allowedCollections = [
     "supportRequests"
 ];
 
+// Validate collection names.
 function getExistingCollection(name) {
     if (!allowedCollections.includes(name)) {
         throw new Error("Collection not recognised.");
@@ -40,6 +41,7 @@ function getExistingCollection(name) {
     return getDatabase().collection(name);
 }
 
+// Validate document data.
 function isValidDocument(data) {
     return (
         data !== null &&
@@ -48,7 +50,7 @@ function isValidDocument(data) {
     );
 }
 
-// Ensure MongoDB is connected before database requests.
+// Connect to MongoDB before API requests.
 app.use("/api", async (req, res, next) => {
     try {
         await connectDatabase();
@@ -144,6 +146,8 @@ app.post("/api/records/:collection", async (req, res) => {
             insertedId: result.insertedId
         });
     } catch (error) {
+        console.error("Insert error:", error);
+
         res.status(400).json({ error: error.message });
     }
 });
@@ -187,6 +191,8 @@ app.put("/api/records/:collection/:id", async (req, res) => {
             message: "Record updated successfully."
         });
     } catch (error) {
+        console.error("Update error:", error);
+
         res.status(400).json({ error: error.message });
     }
 });
@@ -220,6 +226,8 @@ app.delete("/api/records/:collection/:id", async (req, res) => {
             message: "Record deleted successfully."
         });
     } catch (error) {
+        console.error("Delete error:", error);
+
         res.status(400).json({ error: error.message });
     }
 });
@@ -240,7 +248,7 @@ app.use((error, req, res, next) => {
     });
 });
 
-// Local development only.
+// Start server locally.
 if (require.main === module) {
     const PORT = process.env.PORT || 5000;
 
@@ -257,6 +265,7 @@ if (require.main === module) {
                 "Application could not start:",
                 error.message
             );
+
             process.exit(1);
         });
 
