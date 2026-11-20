@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -10,21 +11,20 @@ const {
 } = require("./Database");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
 // Serve the frontend.
-const frontendPath = path.join(__dirname, "../Frontend");
+const frontendPath = path.join(__dirname, "../public");
 
 app.use(express.static(frontendPath));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(frontendPath, "Index.html"));
+    res.sendFile(path.join(frontendPath, "index.html"));
 });
 
-// Only allow the collections used by this project.
+// Existing collection names.
 const allowedCollections = [
     "students",
     "courses",
@@ -48,6 +48,20 @@ function isValidDocument(data) {
     );
 }
 
+// Ensure MongoDB is connected before database requests.
+app.use("/api", async (req, res, next) => {
+    try {
+        await connectDatabase();
+        next();
+    } catch (error) {
+        console.error("Database connection error:", error);
+
+        res.status(503).json({
+            error: "Unable to connect to the database."
+        });
+    }
+});
+
 // Backend status.
 app.get("/api/status", (req, res) => {
     res.json({
@@ -57,20 +71,18 @@ app.get("/api/status", (req, res) => {
     });
 });
 
-// Get all collections and their record counts.
+// Get all collections and record counts.
 app.get("/api/collections", async (req, res) => {
     try {
         const db = getDatabase();
 
         const results = await Promise.all(
             allowedCollections.map(async (name) => {
-                const collection = db.collection(name);
-                const count = await collection.countDocuments();
+                const count = await db
+                    .collection(name)
+                    .countDocuments();
 
-                return {
-                    name,
-                    count
-                };
+                return { name, count };
             })
         );
 
@@ -79,13 +91,12 @@ app.get("/api/collections", async (req, res) => {
         console.error("Collections error:", error);
 
         res.status(500).json({
-            error: "Unable to load collections.",
-            details: error.message
+            error: "Unable to load collections."
         });
     }
 });
 
-// Retrieve records from a collection.
+// Retrieve records.
 app.get("/api/records/:collection", async (req, res) => {
     try {
         const collection = getExistingCollection(
@@ -100,15 +111,11 @@ app.get("/api/records/:collection", async (req, res) => {
 
         res.json(records);
     } catch (error) {
-        console.error("Fetch records error:", error);
-
-        res.status(400).json({
-            error: error.message
-        });
+        res.status(400).json({ error: error.message });
     }
 });
 
-// Add a new record.
+// Add a record.
 app.post("/api/records/:collection", async (req, res) => {
     try {
         const collection = getExistingCollection(
@@ -122,11 +129,9 @@ app.post("/api/records/:collection", async (req, res) => {
         }
 
         const newRecord = { ...req.body };
-
-        // MongoDB generates its own _id.
         delete newRecord._id;
 
-        if (Object.keys(newRecord).length === 0) {
+        if (!Object.keys(newRecord).length) {
             return res.status(400).json({
                 error: "The record cannot be empty."
             });
@@ -139,15 +144,11 @@ app.post("/api/records/:collection", async (req, res) => {
             insertedId: result.insertedId
         });
     } catch (error) {
-        console.error("Add record error:", error);
-
-        res.status(400).json({
-            error: error.message
-        });
+        res.status(400).json({ error: error.message });
     }
 });
 
-// Update an existing record.
+// Update a record.
 app.put("/api/records/:collection/:id", async (req, res) => {
     try {
         const collection = getExistingCollection(
@@ -169,8 +170,6 @@ app.put("/api/records/:collection/:id", async (req, res) => {
         }
 
         const updatedFields = { ...req.body };
-
-        // Never allow a form to overwrite MongoDB's _id.
         delete updatedFields._id;
 
         const result = await collection.updateOne(
@@ -178,7 +177,7 @@ app.put("/api/records/:collection/:id", async (req, res) => {
             { $set: updatedFields }
         );
 
-        if (result.matchedCount === 0) {
+        if (!result.matchedCount) {
             return res.status(404).json({
                 error: "Record not found."
             });
@@ -188,11 +187,7 @@ app.put("/api/records/:collection/:id", async (req, res) => {
             message: "Record updated successfully."
         });
     } catch (error) {
-        console.error("Update record error:", error);
-
-        res.status(400).json({
-            error: error.message
-        });
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -215,7 +210,7 @@ app.delete("/api/records/:collection/:id", async (req, res) => {
             _id: new ObjectId(id)
         });
 
-        if (result.deletedCount === 0) {
+        if (!result.deletedCount) {
             return res.status(404).json({
                 error: "Record not found."
             });
@@ -225,15 +220,11 @@ app.delete("/api/records/:collection/:id", async (req, res) => {
             message: "Record deleted successfully."
         });
     } catch (error) {
-        console.error("Delete record error:", error);
-
-        res.status(400).json({
-            error: error.message
-        });
+        res.status(400).json({ error: error.message });
     }
 });
 
-// Handle invalid API routes.
+// Invalid API routes.
 app.use("/api", (req, res) => {
     res.status(404).json({
         error: "API endpoint not found."
@@ -249,31 +240,30 @@ app.use((error, req, res, next) => {
     });
 });
 
-// Start the application after connecting to MongoDB.
-async function startServer() {
-    try {
-        await connectDatabase();
+// Local development only.
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
 
-        app.listen(PORT, () => {
-            console.log("-----------------------------------");
-            console.log("Campus Support Management System");
-            console.log(`Server running at http://localhost:${PORT}`);
-            console.log("-----------------------------------");
+    connectDatabase()
+        .then(() => {
+            app.listen(PORT, () => {
+                console.log(
+                    `Campus Support running at http://localhost:${PORT}`
+                );
+            });
+        })
+        .catch((error) => {
+            console.error(
+                "Application could not start:",
+                error.message
+            );
+            process.exit(1);
         });
-    } catch (error) {
-        console.error("Application could not start:", error.message);
-        process.exit(1);
-    }
+
+    process.on("SIGINT", async () => {
+        await closeDatabase();
+        process.exit(0);
+    });
 }
 
-process.on("SIGINT", async () => {
-    console.log("\nClosing application...");
-
-    try {
-        await closeDatabase();
-    } finally {
-        process.exit(0);
-    }
-});
-
-startServer();
+module.exports = app;

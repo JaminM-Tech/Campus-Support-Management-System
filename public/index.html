@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Support Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+    <div class="layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">CS</div>
+                <div>
+                    <h2>Campus Support</h2>
+                    <p>Management System</p>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <p class="nav-label">MAIN MENU</p>
+
+                <button class="nav-button active" id="dashboardNav"
+                        data-dashboard>
+                    <span>▦</span> Dashboard
+                </button>
+
+                <p class="nav-label collection-label">DATABASE COLLECTIONS</p>
+                <div id="collectionNav"></div>
+            </div>
+
+            <div class="sidebar-bottom">
+                <button class="sidebar-action" onclick="refreshAll()">
+                    ↻ Refresh System
+                </button>
+
+                <button class="sidebar-action" onclick="checkConnection()">
+                    ◉ Test Connection
+                </button>
+
+                <div class="sidebar-footer">
+                    <span class="status-dot"></span>
+                    <span>Campus Support System</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+
+            <header class="topbar">
+                <div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <p class="topbar-subtitle">
+                        Manage campus information and student support records.
+                    </p>
+                </div>
+
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    Checking connection...
+                </div>
+            </header>
+
+            <!-- Dashboard -->
+            <section id="dashboardView">
+
+                <div class="welcome-panel">
+                    <div>
+                        <p class="welcome-tag">CAMPUS SUPPORT MANAGEMENT</p>
+                        <h2>Welcome to your management dashboard</h2>
+                        <p>
+                            Monitor students, courses, payments and student
+                            support requests from one place.
+                        </p>
+                    </div>
+                    <div class="welcome-symbol">CSMS</div>
+                </div>
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-icon blue">♙</div>
+                        <div>
+                            <p>Total Students</p>
+                            <h2 id="studentCount">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon purple">▤</div>
+                        <div>
+                            <p>Total Courses</p>
+                            <h2 id="courseCount">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon green">▣</div>
+                        <div>
+                            <p>Total Payments</p>
+                            <h2 id="paymentCount">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon orange">✉</div>
+                        <div>
+                            <p>Support Requests</p>
+                            <h2 id="supportCount">0</h2>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Database Collections</h2>
+                            <p>Overview of your database records.</p>
+                        </div>
+                        <button class="secondary-button"
+                                onclick="refreshAll()">↻ Refresh</button>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Collection</th>
+                                    <th>Description</th>
+                                    <th>Records</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardCollections">
+                                <tr>
+                                    <td colspan="4" class="empty-message">
+                                        Loading collections...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="database-info">
+                    <span>Connected database</span>
+                    <strong id="databaseName">CampusSupportDB</strong>
+                </div>
+            </section>
+
+            <!-- Collection view -->
+            <section id="collectionView" class="hidden">
+
+                <div class="collection-heading">
+                    <div>
+                        <h2 id="collectionHeading">Collection</h2>
+                        <p>View and manage records in this collection.</p>
+                    </div>
+
+                    <span class="record-count" id="recordCount">
+                        0 records
+                    </span>
+                </div>
+
+                <div class="panel">
+
+                    <div class="toolbar">
+                        <div class="search-box">
+                            <span>⌕</span>
+                            <input type="search" id="searchInput"
+                                   placeholder="Search records..."
+                                   oninput="renderRecords()">
+                            <button class="clear-search"
+                                    onclick="clearSearch()">×</button>
+                        </div>
+
+                        <div class="toolbar-actions">
+                            <button class="secondary-button"
+                                    onclick="refreshCurrent()">
+                                ↻ Refresh
+                            </button>
+
+                            <button class="secondary-button"
+                                    onclick="exportRecords()">
+                                ↓ Export
+                            </button>
+
+                            <button class="secondary-button"
+                                    onclick="document.getElementById('importFile').click()">
+                                ↑ Import
+                            </button>
+
+                            <input type="file" id="importFile"
+                                   accept=".json,application/json"
+                                   hidden onchange="importRecords(event)">
+
+                            <button class="primary-button"
+                                    onclick="openAddModal()">
+                                + Add Record
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead id="recordsHead"></thead>
+                            <tbody id="recordsBody">
+                                <tr>
+                                    <td class="empty-message">
+                                        Select a collection to view records.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-footer">
+                        <span id="tableSummary">Showing 0 records</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add/Edit record modal -->
+    <div class="modal-overlay hidden" id="recordModal">
+        <div class="modal">
+
+            <div class="modal-header">
+                <div>
+                    <p class="modal-tag">RECORD MANAGEMENT</p>
+                    <h2 id="modalTitle">Add New Record</h2>
+                    <p id="modalDescription">
+                        Enter the information in the fields below.
+                    </p>
+                </div>
+
+                <button class="close-button" onclick="closeModal()"
+                        aria-label="Close">×</button>
+            </div>
+
+            <form id="recordForm">
+                <div class="form-grid" id="formFields"></div>
+
+                <div class="modal-footer">
+                    <button type="button" class="secondary-button"
+                            onclick="closeModal()">Cancel</button>
+
+                    <button type="submit" class="primary-button"
+                            id="saveButton">Save Record</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast hidden" id="toast"></div>
+
+</body>
+</html>
